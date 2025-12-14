@@ -1,25 +1,41 @@
-import express from "express";
-import dotenv from "dotenv";
-import cors from "cors";
-import connectDB from "./config/db.js";
+import env from './config/env.js';
+import connectDB from './config/db.js';
+import app from './app.js';
+import { logger } from './utils/logger.js';
 
-dotenv.config();
-const app = express();
+// Validate environment variables
+env.validate();
 
-// Middlewares
-app.use(cors());
-app.use(express.json());
-
-// Connect DB
+// Connect to database
 connectDB();
 
-// Default Route
-app.get("/", (req, res) => {
-  res.send("API is running...");
+// Start server
+const server = app.listen(env.PORT, () => {
+  logger.info(`🚀 Server running in ${env.NODE_ENV} mode on port ${env.PORT}`);
+  logger.info(`📚 API Documentation: http://localhost:${env.PORT}/api/docs`);
 });
 
-// Start Server
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+// Graceful shutdown
+const gracefulShutdown = () => {
+  logger.info('Received shutdown signal, closing server...');
+  
+  server.close(() => {
+    logger.info('Server closed');
+    process.exit(0);
+  });
+  
+  // Force close after 10 seconds
+  setTimeout(() => {
+    logger.error('Could not close connections in time, forcefully shutting down');
+    process.exit(1);
+  }, 10000);
+};
+
+process.on('SIGTERM', gracefulShutdown);
+process.on('SIGINT', gracefulShutdown);
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (err) => {
+  logger.error(`Unhandled Rejection: ${err.message}`);
+  server.close(() => process.exit(1));
 });
