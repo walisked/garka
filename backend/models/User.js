@@ -20,23 +20,17 @@ const userSchema = new mongoose.Schema(
       required: true
     },
 
-    passwordHash: {
+    password: {
       type: String,
-      required: true
+      required: true,
+      select: false
     },
 
-      // Store hashed password in `password`
-      password: {
-        type: String,
-        required: true,
-        select: false
-      },
-
-      role: {
-        type: String,
-        enum: ["USER", "AGENT", "DEAL_INITIATOR", "ADMIN"],
-        default: "USER"
-      },
+    role: {
+      type: String,
+      enum: ["USER", "AGENT", "DEAL_INITIATOR", "ADMIN"],
+      default: "USER"
+    },
 
     isActive: {
       type: Boolean,
