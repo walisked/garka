@@ -1,14 +1,13 @@
-const request = require('supertest');
-const mongoose = require('mongoose');
-const app = require('../app.js');
-const User = require('../models/User.js');
-const Agent = require('../models/Agent.js');
-const LandProperty = require('../models/LandProperty.js');
-const VerificationRequest = require('../models/VerificationRequest.js');
+import request from 'supertest';
+import mongoose from 'mongoose';
+import app from '../app.js';
+import User from '../models/User.js';
+import Agent from '../models/Agent.js';
+import LandProperty from '../models/LandProperty.js';
+import VerificationRequest from '../models/VerificationRequest.js';
+import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
 
-const { describe, it, expect, beforeAll, afterAll } = require('@jest/globals');
-
-if (!global.__MONGODB_AVAILABLE__) {
+if (!(process.env.MONGODB_URI_TEST || global.__MONGODB_AVAILABLE__)) {
   console.warn('Skipping verification tests: MongoDB not available');
   test.skip('Skipping verification tests: MongoDB not available', () => {});
 } else {
@@ -34,7 +33,7 @@ if (!global.__MONGODB_AVAILABLE__) {
     // Create a property belonging to the agent
     const agent = await Agent.findOne({ user: agentUser._id });
     const property = await LandProperty.create({
-      title: 'Test Plot', agent: agent._id, listedBy: agentUser._id, landSize: '100sqm', price: 1000000, location: { state: 'Lagos', city: 'Ikeja' }, propertyType: 'RESIDENTIAL'
+      title: 'Test Plot', agentId: agent._id, listedBy: agentUser._id, landSize: '100sqm', price: 1000000, location: { state: 'Lagos', city: 'Ikeja' }, landUseType: 'Residential'
     });
     propertyId = property._id;
   });

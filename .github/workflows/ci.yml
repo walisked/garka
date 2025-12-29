@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      mongo:
+        image: mongo:6.0
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.adminCommand({ ping: 1 })'" --health-interval 10s --health-timeout 5s --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ./backend
+      - name: Run backend tests
+        run: npm test
+        working-directory: ./backend
+
+  e2e-monnify:
+    needs: test
+    runs-on: ubuntu-latest
+    if: ${{ secrets.MONNIFY_API_KEY && secrets.MONNIFY_API_SECRET && secrets.MONNIFY_CONTRACT_CODE }}
+    services:
+      mongo:
+        image: mongo:6.0
+        ports:
+          - 27017:27017
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ./backend
+      - name: Run Monnify E2E tests
+        env:
+          MONNIFY_API_KEY: ${{ secrets.MONNIFY_API_KEY }}
+          MONNIFY_API_SECRET: ${{ secrets.MONNIFY_API_SECRET }}
+          MONNIFY_CONTRACT_CODE: ${{ secrets.MONNIFY_CONTRACT_CODE }}
+        run: npm test -- tests/monnify_e2e.test.js
+        working-directory: ./backend

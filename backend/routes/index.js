@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import express, { Router } from 'express';
 import authRoutes from './authRoutes.js';
 import adminRoutes from './adminRoutes.js';
 import agentRoutes from './agentRoutes.js';
@@ -6,6 +6,7 @@ import dealInitiatorRoutes from './dealInitiatorRoutes.js';
 import propertyRoutes from './propertyRoutes.js';
 import verificationRoutes from './verificationRoutes.js';
 import paymentRoutes from './paymentRoutes.js';
+import { handleMonnifyWebhook } from '../controllers/paymentController.js';
 import notificationRoutes from './notificationRoutes.js';
 import { protect } from '../middleware/authMiddleware.js';
 
@@ -22,6 +23,9 @@ router.use('/deal-initiator', protect, dealInitiatorRoutes);
 router.use('/verification', protect, verificationRoutes);
 router.use('/payment', protect, paymentRoutes);
 router.use('/notifications', protect, notificationRoutes);
+
+// Public webhook endpoint for Monnify (should be reachable without auth)
+router.post('/payment/monnify/webhook', express.raw({ type: 'application/json' }), async (req, res) => await handleMonnifyWebhook(req, res));
 
 // Health check
 router.get('/health', (req, res) => {

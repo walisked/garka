@@ -20,6 +20,11 @@ export const protect = async (req, res, next) => {
     // Verify token
     const decoded = jwt.verify(token, env.JWT_SECRET);
     
+    // Check if token is revoked
+    const RevokedToken = (await import('../models/RevokedToken.js')).default;
+    const revoked = await RevokedToken.findOne({ token });
+    if (revoked) return failure(res, 'Token revoked', 401);
+
     // Get user from token
     const user = await User.findById(decoded.id)
       .select('-password')

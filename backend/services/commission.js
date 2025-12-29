@@ -101,17 +101,26 @@ export const distributeCommission = async (verificationRequest) => {
       })
     );
 
-    await Promise.all(transactions);
+    const createdTxs = await Promise.all(transactions);
 
     return {
       commission,
-      transactions: (await Promise.all(transactions)).map(t => t._id)
+      transactions: createdTxs.map(t => t._id)
     };
   } catch (error) {
     logger.error(`Distribute commission error: ${error.message}`);
     throw error;
   }
 };
+
+export const calculateCommissionSimple = (amount) => {
+  return {
+    platform: amount * 0.1,
+    admin: amount * 0.05,
+    crm: amount * 0.1,
+    net: amount * 0.75
+  };
+}
 
 export const processPayout = async (transactionId, provider = 'STRIPE') => {
   try {
@@ -137,11 +146,3 @@ export const processPayout = async (transactionId, provider = 'STRIPE') => {
     throw error;
   }
 };
-export function calculateCommission(amount) {
-  return {
-    platform: amount * 0.1,
-    admin: amount * 0.05,
-    crm: amount * 0.1,
-    net: amount * 0.75
-  };
-}

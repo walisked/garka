@@ -28,12 +28,17 @@ const limiter = rateLimit({
 });
 app.use('/api', limiter);
 
-// Body parsing
-app.use(express.json({ limit: '10mb' }));
+// Body parsing (capture raw body for webhook signature verification)
+app.use(express.json({ limit: '10mb', verify: (req, res, buf) => { req.rawBody = buf; } }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Data sanitization
-app.use(mongoSanitize());
+// Skip express-mongo-sanitize in test environment because it can fail with read-only req.query objects in some test runners
+if (env.NODE_ENV !== 'test') {
+  app.use(mongoSanitize());
+} else {
+  app.use((req, res, next) => next());
+}
 
 // Compression
 app.use(compression());

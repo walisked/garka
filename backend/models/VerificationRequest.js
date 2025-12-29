@@ -25,16 +25,39 @@ const verificationRequestSchema = new mongoose.Schema(
       ref: "DealInitiator"
     },
 
+    verificationFee: { type: Number, default: 0 },
+
     paymentStatus: {
       type: String,
-      enum: ["pending", "paid"],
+      enum: ["pending", "paid", "failed"],
       default: "pending"
+    },
+
+    paymentReference: String,
+    paymentProviderReference: String,
+    paidAt: Date,
+    escrowStatus: {
+      type: String,
+      enum: ['NONE', 'HELD', 'RELEASED'],
+      default: 'NONE'
     },
 
     requestStatus: {
       type: String,
       enum: ["submitted", "claimed", "in_progress", "completed", "rejected"],
       default: "submitted"
+    },
+
+    claimedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      refPath: 'claimedByModel'
+    },
+    claimedByModel: String, // 'DealInitiator' or 'Agent'
+    claimedAt: Date,
+
+    adminApproved: {
+      type: Boolean,
+      default: false
     },
 
     termsAccepted: {
