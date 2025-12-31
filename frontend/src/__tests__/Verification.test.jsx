@@ -3,9 +3,11 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 
+// Mock verification API before importing to ensure the module has spyable functions
+vi.mock('../api/verification', () => ({ requestVerification: vi.fn() }));
+import * as verificationAPI from '../api/verification';
 import Verification from '../pages/protected/Verification/Verification';
 import { NotificationProvider } from '../contexts/NotificationContext';
-import * as verificationAPI from '../api/verification';
 
 describe('Verification page', () => {
   beforeEach(() => {

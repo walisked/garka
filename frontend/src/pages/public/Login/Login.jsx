@@ -57,14 +57,8 @@ const Login = () => {
     const result = await login(formData.email, formData.password);
     
     if (result.success) {
-      // Route based on user type
-      if (result.user.userType === 'admin') {
-        navigate('/founder-dashboard');
-      } else if (result.user.userType === 'agent') {
-        navigate('/agent-dashboard');
-      } else {
-        navigate('/marketplace');
-      }
+      // Always route to marketplace after login (per new frontend flow)
+      navigate('/marketplace');
     } else {
       setError(result.error || 'Invalid email or password');
     }

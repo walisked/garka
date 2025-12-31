@@ -39,9 +39,15 @@ const landPropertySchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["available", "under_verification", "sold"],
+      enum: ["available", "reserved", "under_verification", "sold"],
       default: "available"
-    }
+    },
+
+    // If a property is reserved after payment, this stores the expiry
+    reservedUntil: { type: Date, default: null },
+
+    // When admin approves, property becomes visible on map
+    visibleOnMap: { type: Boolean, default: false }
   },
   { timestamps: true }
 );

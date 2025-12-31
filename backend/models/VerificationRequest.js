@@ -29,8 +29,14 @@ const verificationRequestSchema = new mongoose.Schema(
 
     paymentStatus: {
       type: String,
-      enum: ["pending", "paid", "failed"],
+      enum: ["pending", "paid", "failed", "expired"],
       default: "pending"
+    },
+
+    // Reservation TTL for paid verifications (set on payment success)
+    reservedUntil: {
+      type: Date,
+      default: null
     },
 
     paymentReference: String,

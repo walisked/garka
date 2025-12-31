@@ -39,17 +39,31 @@ export const approveVerification = async (id, adminNote) => {
     verification.completedAt = new Date();
     await verification.save();
 
+    // Make property visible on map
+    try {
+      const LandProperty = (await import('../models/LandProperty.js')).default;
+      const prop = await LandProperty.findById(verification.propertyId);
+      if (prop) {
+        prop.visibleOnMap = true;
+        // clear reservation after final approval
+        prop.reservedUntil = null;
+        prop.status = 'under_verification';
+        await prop.save();
+      }
+    } catch (err) {
+      logger.warn(`Failed to update property visibility on approval: ${err.message}`);
+    }
+
+    // Distribute commissions and optionally auto-payout
     try {
       const result = await commissionService.distributeCommission(verification);
 
-      // Optionally process payouts automatically if configured
-      // Check runtime env var for auto payout to allow tests to toggle at runtime
       const autoPayout = process.env.MONNIFY_AUTO_PAYOUT === 'true';
       const defaultPayoutProvider = process.env.DEFAULT_PAYOUT_PROVIDER || 'STRIPE';
       if (autoPayout) {
         const payoutTxIds = (result.transactions || []).slice().map(id => id.toString());
         for (const txId of payoutTxIds) {
-          const tx = await commissionService.processPayout(txId, defaultPayoutProvider);
+          await commissionService.processPayout(txId, defaultPayoutProvider);
         }
         verification.escrowStatus = 'RELEASED';
         await verification.save();

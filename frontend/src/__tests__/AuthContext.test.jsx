@@ -3,8 +3,10 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 
+// Mock auth API before importing to ensure login exists to spy on
+vi.mock('../api/auth', () => ({ default: { login: vi.fn() } }));
+import authAPI from '../api/auth';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
-import * as authAPI from '../api/auth';
 
 const TestLogin = () => {
   const { login } = useAuth();

@@ -1,6 +1,6 @@
 import { Router, json, raw } from 'express';
 import { protect } from '../middleware/authMiddleware.js';
-import { createPaymentIntent, handleWebhook, getPaymentStatus, createMonnifyPayment, handleMonnifyWebhook } from '../controllers/paymentController.js';
+import { createPaymentIntent, handleWebhook, getPaymentStatus, createMonnifyPayment, handleMonnifyWebhook, simulatePaymentComplete } from '../controllers/paymentController.js';
 
 const router = Router();
 
@@ -14,5 +14,8 @@ router.post('/monnify/initiate', protect, createMonnifyPayment);
 import { webhookLimiter } from '../middleware/rateLimiter.js';
 
 router.post('/monnify/webhook', raw({ type: 'application/json' }), webhookLimiter, async (req, res) => await handleMonnifyWebhook(req, res));
+
+// Sandbox helper to simulate a completed payment for local/dev testing
+router.post('/simulate/:verificationId/complete', protect, async (req, res) => await simulatePaymentComplete(req, res));
 
 export default router;

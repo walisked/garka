@@ -63,3 +63,10 @@ This will run the backend tests in-band against the local MongoDB instance so DB
   - `PATCH /api/verification/:id/approve` (admin only)
 
 - Run tests: `npm test` (DB-dependent suites are skipped when MongoDB isn't available).
+
+
+## Sandbox payment simulation & reservation cleanup (developer notes)
+
+- To simulate a successful payment during local development, call POST `/api/payment/simulate/:verificationId/complete` as the buyer; this will mark the verification as paid, set a 12-hour reservation, and mark the associated property as `reserved`.
+- The Monnify webhook (`POST /api/payment/monnify/webhook`) will also set reservation and property status on real payments.
+- A reservation cleaner runs in the backend (default every 1 minute in dev) and expires reservations that pass their `reservedUntil` timestamp without admin approval; those verifications become `expired` and the property status returns to `available`.

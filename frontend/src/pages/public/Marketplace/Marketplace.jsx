@@ -42,6 +42,11 @@ import {
   Phone,
 } from '@mui/icons-material';
 import PaymentModal from '../../../components/verification/PaymentModal';
+import { useAuth } from '../../../contexts/AuthContext';
+
+console.log('Marketplace imports', { PaymentModal: !!PaymentModal, Box: !!Box, Grid: !!Grid, Card: !!Card });
+import verificationAPI from '../../../api/verification.js';
+import paymentsAPI from '../../../api/payments';
 
 // Tab panel component
 function TabPanel({ children, value, index, ...other }) {
@@ -59,6 +64,8 @@ function TabPanel({ children, value, index, ...other }) {
 }
 
 const Marketplace = () => {
+  console.log('Marketplace function executing');
+  const { user, token } = useAuth();
   const [viewMode, setViewMode] = useState('grid');
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
@@ -72,147 +79,47 @@ const Marketplace = () => {
     verificationStatus: '',
   });
 
-  // Mock property data
-  const properties = [
-    {
-      id: 1,
-      title: 'Premium Plot in Maitama',
-      location: 'Maitama, Abuja',
-      price: 45000000,
-      size: '500 sqm',
-      propertyType: 'residential',
-      titleType: 'C-of-O',
-      verificationStatus: 'verified',
-      images: ['/api/placeholder/400/300'],
-      agent: {
-        name: 'Chinedu Okoro',
-        rating: 4.9,
-        trustScore: 94,
-        verified: true,
-        profileImage: '/api/placeholder/40/40',
-      },
-      coordinates: { lat: 9.0765, lng: 7.3986 },
-      features: ['Prime Location', 'Good Road Network', 'Drainage'],
-      datePosted: '2024-01-15',
-      views: 124,
-      likes: 18,
-    },
-    {
-      id: 2,
-      title: 'Commercial Land in Wuse Zone 4',
-      location: 'Wuse Zone 4, Abuja',
-      price: 85000000,
-      size: '800 sqm',
-      propertyType: 'commercial',
-      titleType: 'R-of-O',
-      verificationStatus: 'verified',
-      images: ['/api/placeholder/400/300'],
-      agent: {
-        name: 'Sarah Johnson',
-        rating: 4.8,
-        trustScore: 92,
-        verified: true,
-        profileImage: '/api/placeholder/40/40',
-      },
-      coordinates: { lat: 9.0765, lng: 7.3986 },
-      features: ['High Commercial Value', 'Main Road', 'Security'],
-      datePosted: '2024-01-14',
-      views: 89,
-      likes: 12,
-    },
-    {
-      id: 3,
-      title: 'Affordable Plot in Kubwa',
-      location: 'Kubwa, Abuja',
-      price: 12000000,
-      size: '300 sqm',
-      propertyType: 'residential',
-      titleType: 'Governor\'s Consent',
-      verificationStatus: 'pending',
-      images: ['/api/placeholder/400/300'],
-      agent: {
-        name: 'Mike Adebayo',
-        rating: 4.7,
-        trustScore: 88,
-        verified: true,
-        profileImage: '/api/placeholder/40/40',
-      },
-      coordinates: { lat: 9.1765, lng: 7.2986 },
-      features: ['Developing Area', 'Accessible', 'Affordable'],
-      datePosted: '2024-01-13',
-      views: 156,
-      likes: 23,
-    },
-    {
-      id: 4,
-      title: 'Luxury Villa Plot in Asokoro',
-      location: 'Asokoro, Abuja',
-      price: 120000000,
-      size: '1000 sqm',
-      propertyType: 'residential',
-      titleType: 'C-of-O',
-      verificationStatus: 'verified',
-      images: ['/api/placeholder/400/300'],
-      agent: {
-        name: 'Grace Okafor',
-        rating: 5.0,
-        trustScore: 98,
-        verified: true,
-        profileImage: '/api/placeholder/40/40',
-      },
-      coordinates: { lat: 9.0665, lng: 7.5186 },
-      features: ['Exclusive Area', '24/7 Security', 'Landscaped'],
-      datePosted: '2024-01-12',
-      views: 67,
-      likes: 15,
-    },
-    {
-      id: 5,
-      title: 'Industrial Land in Idu',
-      location: 'Idu Industrial Area, Abuja',
-      price: 65000000,
-      size: '2000 sqm',
-      propertyType: 'industrial',
-      titleType: 'C-of-O',
-      verificationStatus: 'verified',
-      images: ['/api/placeholder/400/300'],
-      agent: {
-        name: 'James Mohammed',
-        rating: 4.6,
-        trustScore: 85,
-        verified: true,
-        profileImage: '/api/placeholder/40/40',
-      },
-      coordinates: { lat: 9.0865, lng: 7.3386 },
-      features: ['Industrial Zone', 'Heavy Duty Access', 'Utilities'],
-      datePosted: '2024-01-11',
-      views: 45,
-      likes: 8,
-    },
-    {
-      id: 6,
-      title: 'Plot with Duplex in Gwarinpa',
-      location: 'Gwarinpa, Abuja',
-      price: 75000000,
-      size: '600 sqm',
-      propertyType: 'residential',
-      titleType: 'C-of-O',
-      verificationStatus: 'pending',
-      images: ['/api/placeholder/400/300'],
-      agent: {
-        name: 'Bola Ahmed',
-        rating: 4.4,
-        trustScore: 82,
-        verified: true,
-        profileImage: '/api/placeholder/40/40',
-      },
-      coordinates: { lat: 9.0965, lng: 7.3986 },
-      features: ['Existing Structure', 'Gated Community', 'Parking'],
-      datePosted: '2024-01-10',
-      views: 178,
-      likes: 31,
-    },
-  ];
+  // Properties will be fetched from the backend
+  const [properties, setProperties] = useState([]);
+  const [loadingProperties, setLoadingProperties] = useState(false);
+
+  const fetchProperties = async () => {
+    setLoadingProperties(true);
+    try {
+      const propertiesAPI = (await import('../../../api/properties.js')).default;
+      const data = await propertiesAPI.list();
+      const normalized = (data.properties || []).map(p => ({
+        id: p._id,
+        title: p.title,
+        location: p.location?.address || `${p.location?.city || ''}, ${p.location?.state || ''}`,
+        price: p.price,
+        size: p.landSize || 'N/A',
+        propertyType: (p.landUseType || 'residential').toLowerCase(),
+        titleType: p.titleType || 'C-of-O',
+        verificationStatus: p.status === 'reserved' ? 'reserved' : (p.status === 'under_verification' ? 'pending' : 'verified'),
+        images: p.images || [],
+        agent: p.agentId ? { name: p.agentId.user?.fullName || 'Agent', profileImage: p.agentId.profileImage } : { name: 'Agent' },
+        dealInitiator: p.dealInitiator || null,
+        coordinates: p.coordinates || null,
+        features: p.features || [],
+        datePosted: p.createdAt,
+        views: p.views || 0,
+        likes: p.likes || 0,
+        reservedUntil: p.reservedUntil ? new Date(p.reservedUntil).getTime() : null,
+        visibleOnMap: !!p.visibleOnMap
+      }));
+
+      setProperties(normalized);
+    } catch (err) {
+      console.error('Failed to fetch properties', err);
+    } finally {
+      setLoadingProperties(false);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchProperties();
+  }, []);
 
   const handleFilterChange = (filterName, value) => {
     setFilters(prev => ({
@@ -248,6 +155,23 @@ const Marketplace = () => {
         variant="filled"
       />
     );
+  };
+
+  // Handle payment success: mark property reserved and set expiry (12 hours)
+  const handlePaymentSuccess = ({ propertyId, reservedUntil }) => {
+    // Refresh properties to pick up backend state changes
+    fetchProperties();
+    setPaymentModalOpen(false);
+    setSelectedProperty(null);
+  };
+
+  const renderCountdown = (reservedUntil) => {
+    if (!reservedUntil) return null;
+    const ms = reservedUntil - Date.now();
+    if (ms <= 0) return 'Expired';
+    const hours = Math.floor(ms / (1000 * 60 * 60));
+    const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
+    return `${hours}h ${minutes}m`;
   };
 
   const PropertyCard = ({ property }) => (
@@ -345,6 +269,15 @@ const Marketplace = () => {
             />
           )}
         </Box>
+
+        {/* Reservation status */}
+        {property.reservedUntil && property.reservedUntil > Date.now() && (
+          <Box sx={{ mb: 1 }}>
+            <Typography variant="body2" color="warning.main">
+              Reserved • {renderCountdown(property.reservedUntil)} left
+            </Typography>
+          </Box>
+        )}
 
         {/* Agent Info */}
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -450,6 +383,12 @@ const Marketplace = () => {
 
                 {getVerificationChip(property.verificationStatus)}
 
+                {property.reservedUntil && property.reservedUntil > Date.now() && (
+                  <Typography variant="body2" color="warning.main" sx={{ mb: 1 }}>
+                    Reserved • {renderCountdown(property.reservedUntil)} left
+                  </Typography>
+                )}
+
                 <Box sx={{ my: 3 }}>
                   <Typography variant="body1" gutterBottom>
                     📏 <strong>Size:</strong> {property.size}
@@ -510,17 +449,41 @@ const Marketplace = () => {
                   </Box>
                 </Paper>
 
+                <Paper sx={{ p: 2, backgroundColor: '#fff', mb: 2 }}>
+                  <Typography variant="h6" gutterBottom>
+                    Deal Initiator
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    <Typography variant="body1">{property.dealInitiator?.name}</Typography>
+                    <Typography variant="body2">Phone: <a href={`tel:${property.dealInitiator?.phone}`}>{property.dealInitiator?.phone}</a></Typography>
+                    <Typography variant="body2">Email: <a href={`mailto:${property.dealInitiator?.email}`}>{property.dealInitiator?.email}</a></Typography>
+                    <Typography variant="body2">Rank: {property.dealInitiator?.rank}</Typography>
+                  </Box>
+                </Paper>
+
                 <Button
                   variant="contained"
                   fullWidth
                   size="large"
                   sx={{ mb: 1 }}
-                  onClick={() => {
-                    setPaymentModalProperty(property);
-                    setPaymentModalOpen(true);
+                  onClick={async () => {
+                    if (user && user.isVerified === false) return;
+                    try {
+                      const fee = property.verificationFee || Math.max(5000, Math.round((property.price || 0) * 0.01));
+                      const res = await verificationAPI.requestVerification({ propertyId: property.id, verificationFee: fee, termsAccepted: true }, token);
+                      const verification = res.verification;
+
+                      // attach verification id to the property shown in modal
+                      setPaymentModalProperty({ ...property, verificationId: verification._id, verificationFee: verification.verificationFee || fee });
+                      setPaymentModalOpen(true);
+                    } catch (err) {
+                      console.error(err);
+                      alert('Failed to create verification. Please try again.');
+                    }
                   }}
+                  disabled={user && user.isVerified === false}
                 >
-                  Request Verification
+                  {user && user.isVerified === false ? 'Verify account to Request' : 'Request Verification'}
                 </Button>
                 <Button variant="outlined" fullWidth startIcon={<Share />}>
                   Share Property
@@ -532,6 +495,8 @@ const Marketplace = () => {
       </Dialog>
     );
   };
+
+  console.log('Marketplace render check', { PaymentModal: !!PaymentModal, PropertyCard: typeof PropertyCard, PropertyDetailModal: typeof PropertyDetailModal, Pagination: !!Pagination, Dialog: !!Dialog, DialogTitle: !!DialogTitle, DialogContent: !!DialogContent, IconButton: !!IconButton, Avatar: !!Avatar, Rating: !!Rating, Search: !!Search, FilterList: !!FilterList, LocationOn: !!LocationOn, FavoriteBorder: !!FavoriteBorder, Share: !!Share, VerifiedUser: !!VerifiedUser, Star: !!Star, BusinessCenter: !!BusinessCenter, MapIcon: !!Map, ListIcon: !!List, GridView: !!GridView, Message: !!Message, Close: !!Close, Phone: !!Phone });
 
   return (
     <Box sx={{ p: 3, backgroundColor: '#f8f9fa', minHeight: '100vh' }}>
@@ -680,7 +645,8 @@ const Marketplace = () => {
         open={paymentModalOpen}
         onClose={() => setPaymentModalOpen(false)}
         property={paymentModalProperty}
-        agent={paymentModalProperty?.agent}
+        agent={paymentModalProperty?.dealInitiator || paymentModalProperty?.agent}
+        onSuccess={handlePaymentSuccess}
       />
 
       <PropertyDetailModal 

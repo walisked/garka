@@ -7,6 +7,8 @@ import { verificationAPI } from '../../../api/verification';
 import { useNotifications } from '../../../contexts/NotificationContext';
 import toast from 'react-hot-toast';
 
+console.log('Verification imports', { Box: !!Box, Formik: !!Formik, Form: !!Form, Field: !!Field, Checkbox: !!Checkbox });
+
 const validationSchema = Yup.object({
 	propertyId: Yup.string().required('Property ID is required'),
 	agentId: Yup.string().required('Agent ID is required'),

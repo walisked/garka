@@ -137,6 +137,55 @@ export const createMonnifyPayment = async (req, res) => {
   }
 };
 
+export const simulatePaymentComplete = async (req, res) => {
+  try {
+    const { verificationId } = req.params;
+    const verification = await VerificationRequest.findById(verificationId);
+    if (!verification) return failure(res, 'Verification not found', 404);
+
+    // Only buyer can mark as paid in sandbox
+    if (verification.buyerId.toString() !== req.user.id.toString()) {
+      return failure(res, 'Not authorized', 403);
+    }
+
+    // Create a fake transaction record
+    const tx = await Transaction.create({
+      user: req.user.id,
+      amount: verification.verificationFee || 0,
+      status: 'SUCCESS',
+      type: 'PAYMENT_IN',
+      provider: 'SANDBOX',
+      providerReference: `SANDBOX-${Date.now()}`,
+      metadata: { verificationId }
+    });
+
+    verification.paymentStatus = 'paid';
+    verification.paymentProviderReference = tx.providerReference;
+    verification.paidAt = new Date();
+    verification.escrowStatus = 'HELD';
+
+    // Reserved for 12 hours
+    const reservedUntil = new Date(Date.now() + 12 * 60 * 60 * 1000);
+    verification.reservedUntil = reservedUntil;
+
+    await verification.save();
+
+    // Update property
+    const LandProperty = (await import('../models/LandProperty.js')).default;
+    const prop = await LandProperty.findById(verification.propertyId);
+    if (prop) {
+      prop.status = 'reserved';
+      prop.reservedUntil = reservedUntil;
+      await prop.save();
+    }
+
+    return success(res, { tx, verification }, 'Payment simulated and verification marked as paid');
+  } catch (error) {
+    logger.error(`Simulate payment complete error: ${error.message}`);
+    return failure(res, 'Simulation failed', 500);
+  }
+};
+
 export const handleMonnifyWebhook = async (req, res) => {
   try {
     // Verify signature
@@ -216,7 +265,26 @@ export const handleMonnifyWebhook = async (req, res) => {
         verification.paidAt = new Date();
         // Mark escrow as held until admin releases/payout
         verification.escrowStatus = 'HELD';
+
+        // Set reservation expiry (12 hours from now)
+        const twelveHours = 12 * 60 * 60 * 1000;
+        const reservedUntil = new Date(Date.now() + twelveHours);
+        verification.reservedUntil = reservedUntil;
+
         await verification.save();
+
+        // Update property status and reservedUntil
+        try {
+          const LandProperty = (await import('../models/LandProperty.js')).default;
+          const prop = await LandProperty.findById(verification.propertyId);
+          if (prop) {
+            prop.status = 'reserved';
+            prop.reservedUntil = reservedUntil;
+            await prop.save();
+          }
+        } catch (err) {
+          logger.warn(`Failed to update property reservation: ${err.message}`);
+        }
       }
 
       return success(res, null, 'Payment processed');

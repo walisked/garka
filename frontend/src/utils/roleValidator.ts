@@ -1,17 +1,23 @@
-export type UserRole = 'ADMIN' | 'AGENT' | 'DEAL_INITIATOR' | 'USER';
+// typedef for runtime
 
-export const isGarkaEmail = (email: string) => /@garka\.com\s*$/i.test(email.trim());
+export function isGarkaEmail(email: string) {
+  return /@garka\.com\s*$/i.test(email.trim());
+}
 
-export const detectRoleByEmail = (email: string): UserRole => {
+export function detectRoleByEmail(email: string) {
   const local = email.split('@')[0] || '';
   const l = local.toLowerCase();
   if (l.includes('.admin') || l.endsWith('-admin') || l === 'admin') return 'ADMIN';
   if (l.includes('.agent') || l.endsWith('-agent') || l === 'agent') return 'AGENT';
   if (l.includes('.dealinitor') || l.includes('.dealinitiator') || l.includes('.dealin') || l === 'dealinitor') return 'DEAL_INITIATOR';
   return 'USER';
-};
+}
 
-export const validateRoleEmail = (role: UserRole, email: string) => {
+export function validateRoleEmail(role: string, email: string) {
   if (role === 'USER') return true;
   return isGarkaEmail(email);
-};
+}
+
+const roleUtils = { isGarkaEmail, detectRoleByEmail, validateRoleEmail };
+export default roleUtils;
+

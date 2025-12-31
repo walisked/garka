@@ -53,6 +53,17 @@ app.use('/uploads', express.static('uploads'));
 import apiRoutes from './routes/index.js';
 app.use('/api', apiRoutes);
 
+// Start reservation cleaner in non-test environments (expires unpaid/expired reservations)
+if (env.NODE_ENV !== 'test') {
+  import('./services/reservation.js').then(({ startReservationCleaner }) => {
+    // default interval: 1 minute (for dev). Increase in prod via env if desired.
+    const intervalMs = parseInt(process.env.RESERVATION_CLEANER_MS || '60000', 10);
+    startReservationCleaner(intervalMs);
+  }).catch(err => {
+    logger.warn(`Failed to start reservation cleaner: ${err.message}`);
+  });
+}
+
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({

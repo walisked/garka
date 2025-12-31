@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import verificationAPI from '../../api/verification.js';
-import { useAuth } from '../../contexts/AuthContext.jsx';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function VerificationDetails({ verificationId }) {
   const { user, token } = useAuth();

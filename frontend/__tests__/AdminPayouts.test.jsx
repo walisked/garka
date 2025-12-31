@@ -1,10 +1,11 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import AdminPayouts from '../src/pages/admin/AdminPayouts.jsx';
-import api from '../src/api/index.js';
 import { vi } from 'vitest';
 
-vi.mock('../src/api/index.js');
+// Mock API before importing module so the imported api is the mocked object
+vi.mock('../src/api/index.js', () => ({ default: { get: vi.fn(), post: vi.fn() } }));
+import api from '../src/api/index.js';
+import AdminPayouts from '../src/pages/admin/AdminPayouts.jsx';
 
 describe('AdminPayouts', () => {
   it('renders payouts and processes a payout', async () => {

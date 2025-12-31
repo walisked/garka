@@ -145,16 +145,14 @@ const Signup = () => {
     setLoading(true);
     setError('');
 
-    const result = await signup(formData);
-    
-    if (result.success) {
-      if (result.user.userType === 'agent') {
-        navigate('/agent-dashboard');
-      } else {
-        navigate('/marketplace');
-      }
+    // Use the context register method
+    const result = await register(formData);
+
+    if (result?.success) {
+      // Always go to marketplace after registration
+      navigate('/marketplace');
     } else {
-      setError(result.error || 'Signup failed. Please try again.');
+      setError(result?.error || 'Signup failed. Please try again.');
     }
     setLoading(false);
   };
