@@ -3,7 +3,7 @@ import User from '../models/User.js';
 
 export const createNotification = async ({ user, title, message }) => {
   return await Notification.create({
-    user,
+    userId: user,
     title,
     message
   });

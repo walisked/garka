@@ -34,11 +34,11 @@ export const UserRoute = () => {
 	return <Outlet />;
 };
 
-export const ProtectedRoute = ({ children }) => {
+export const ProtectedRoute = () => {
 	const { user, loading } = useAuth();
 	if (loading) return <div>Loading...</div>;
 	if (!user) return <Navigate to="/login" />;
-	return children;
+	return <Outlet />;
 };
 
 export default null;

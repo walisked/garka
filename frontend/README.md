@@ -5,6 +5,8 @@ This frontend is built with React + Vite + MUI and is intended to connect to the
 Quick start:
 
 1. Copy `.env.example` to `.env` and set `VITE_API_BASE_URL`.
+
+> **API base URL note:** If you don't set `VITE_API_BASE_URL`, the frontend will default to the relative path `/api` (so requests go to `/api/...`). If you run the frontend on Codespaces or a different host and your backend is at a different origin, set `VITE_API_BASE_URL` to include the `/api` prefix, e.g. `VITE_API_BASE_URL=http://localhost:5000/api`.
 2. Install dependencies: `npm install`
 3. Start dev server: `npm run dev`
 4. Run tests: `npm test` (uses Vitest)
@@ -19,7 +21,33 @@ QA checklist:
 - [ ] Test registration, login, and token persistence
 - [ ] Test role-based redirects
 - [ ] Test property listing form and file uploads against backend
-- [ ] Test verification request and claim flows
+- [x] Test verification request and claim flows (basic frontend simulation implemented)
+
+## Request Verification & Payment Simulation
+
+- After clicking a property card in the marketplace, users can view property details including the **Deal Initiator** (name, phone, email, rank).
+- Clicking **Request Verification** opens the payment modal. In local development (no Monnify configured), payment is simulated and treated as successful.
+- On simulated success, the property becomes **Reserved** and a **12-hour countdown** starts (visible on the property card and property details).
+- The payment modal accepts an `onSuccess` callback which is used to mark properties reserved in the marketplace.
+
+## Run & Test
+
+Start dev server:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Run tests (vitest):
+
+```bash
+cd frontend
+npm test
+```
+
+Note: some end-to-end payment flows use Monnify and require the backend env variables described in the project README to run end-to-end. Local tests use a sandbox/simulated path.
 - [ ] Run `npm test` and ensure unit tests pass
 
 # React + Vite

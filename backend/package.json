@@ -10,6 +10,7 @@
     "test": "NODE_ENV=test jest --coverage",
     "test:watch": "NODE_ENV=test jest --watch",
     "test:integration": "NODE_ENV=test jest tests/*.test.js",
+    "test:local-mongo": "MONGODB_URI=mongodb://localhost:27017/garka_test NODE_ENV=test jest --runInBand",
     "seed": "node scripts/seedDatabase.js"
   },
   "jest": {

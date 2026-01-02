@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import User from '../models/User.js';
 import Agent from '../models/Agent.js';
 import DealInitiator from '../models/DealInitiator.js';
@@ -13,11 +14,13 @@ export const registerUser = async (req, res) => {
   try {
     const { fullName, email, phone, password, role } = req.body;
     
-    // Validate role
-    const allowedRoles = ['USER', 'AGENT', 'DEAL_INITIATOR'];
-    if (role && !allowedRoles.includes(role)) {
-      return failure(res, 'Invalid role specified', 400);
+    // Disallow public registration for agent or deal initiator roles
+    if (role && (role === 'AGENT' || role === 'DEAL_INITIATOR')) {
+      return failure(res, 'Registration as AGENT or DEAL_INITIATOR is not allowed', 403);
     }
+
+    // Only allow public registration as USER
+    const userRole = 'USER';
 
     // Check if user exists
     const existingUser = await User.findOne({ 
@@ -38,39 +41,8 @@ export const registerUser = async (req, res) => {
       email,
       phone,
       password: hashedPassword,
-      role: role || 'USER'
+      role: userRole
     });
-
-    // Create role-specific profile if needed
-    if (role === 'AGENT') {
-      await Agent.create({
-        user: user._id,
-        status: 'PENDING_VERIFICATION'
-      });
-      
-      // Notify admin about new agent registration
-      await notificationService.notifyAdmins({
-        title: 'New Agent Registration',
-        message: `${fullName} has registered as an agent and awaits verification.`,
-        type: 'AGENT_REGISTRATION',
-        data: { userId: user._id }
-      });
-    }
-
-    if (role === 'DEAL_INITIATOR') {
-      await DealInitiator.create({
-        user: user._id,
-        status: 'PENDING_VERIFICATION'
-      });
-      
-      // Notify admin about new deal initiator
-      await notificationService.notifyAdmins({
-        title: 'New Deal Initiator Registration',
-        message: `${fullName} has registered as a deal initiator and awaits verification.`,
-        type: 'DEAL_INITIATOR_REGISTRATION',
-        data: { userId: user._id }
-      });
-    }
 
     // Generate token
     const token = jwt.sign(
@@ -111,6 +83,11 @@ export const loginUser = async (req, res) => {
     // Check if account is active
     if (!user.isActive) {
       return failure(res, 'Account is deactivated. Please contact admin.', 403);
+    }
+
+    // If account is an agent or deal initiator, ensure it was invited and activated by admin
+    if ((user.role === 'AGENT' || user.role === 'DEAL_INITIATOR') && (!user.invited || !user.isActivated)) {
+      return failure(res, 'Account not activated. Please activate via invite link.', 403);
     }
 
     // Check password
@@ -229,8 +206,132 @@ export const changePassword = async (req, res) => {
   }
 };
 
-// Logout (client-side token invalidation)
-export const logout = (req, res) => {
-  // Note: For complete logout with token blacklisting, implement Redis
-  return success(res, null, 'Logged out successfully');
+// Admin invites an Agent or Deal Initiator
+export const inviteAccount = async (req, res) => {
+  try {
+    const { officialEmail, role, fullName } = req.body;
+
+    if (!officialEmail || !role) {
+      return failure(res, 'officialEmail and role are required', 400);
+    }
+
+    if (!['AGENT', 'DEAL_INITIATOR'].includes(role)) {
+      return failure(res, 'Invalid role for invite', 400);
+    }
+
+    // Ensure user does not already exist
+    const existing = await User.findOne({ email: officialEmail });
+    if (existing) {
+      return failure(res, 'User with this email already exists', 400);
+    }
+
+    const activationToken = crypto.randomBytes(20).toString('hex');
+    const activationExpires = Date.now() + (7 * 24 * 60 * 60 * 1000); // 7 days
+
+    // create a minimal invited user with a temporary password and placeholder phone
+    const salt = await bcrypt.genSalt(10);
+    const tempPass = crypto.randomBytes(8).toString('hex');
+    const hashedTemp = await bcrypt.hash(tempPass, salt);
+
+    const invitedUser = await User.create({
+      fullName: fullName || 'Invited User',
+      email: officialEmail,
+      role,
+      invited: true,
+      invitedBy: req.user.id,
+      activationToken,
+      activationExpires,
+      isActivated: false,
+      isActive: true,
+      password: hashedTemp,
+      phone: req.body.phone || '0000000000'
+    });
+
+    // Send notification to admin or indicate email-sending (stub for now)
+    await notificationService.createNotification({
+      user: req.user.id,
+      title: 'Invitation created',
+      message: `Invitation created for ${officialEmail}`
+    });
+
+    // Return activation token for admin/testing (in production we'd email it instead)
+    return success(res, { activationToken }, 'Invitation created');
+  } catch (error) {
+    logger.error(`Invite account error: ${error.message}`);
+    return failure(res, 'Failed to invite account', 500);
+  }
+};
+
+// Activate invited account (set password and complete profile)
+export const activateInvite = async (req, res) => {
+  try {
+    const { token, password, fullName, phone } = req.body;
+
+    if (!token || !password) {
+      return failure(res, 'Token and password are required', 400);
+    }
+
+    const user = await User.findOne({ activationToken: token, activationExpires: { $gt: Date.now() } });
+    if (!user) {
+      return failure(res, 'Invalid or expired activation token', 400);
+    }
+
+    // Hash new password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    user.password = hashedPassword;
+    if (fullName) user.fullName = fullName;
+    if (phone) user.phone = phone;
+    user.isActivated = true;
+    user.activationToken = undefined;
+    user.activationExpires = undefined;
+
+    await user.save();
+
+    // Create role-specific profile
+    if (user.role === 'AGENT') {
+      await Agent.create({ user: user._id, status: 'PENDING_VERIFICATION' });
+    }
+
+    if (user.role === 'DEAL_INITIATOR') {
+      await DealInitiator.create({ user: user._id, status: 'PENDING_VERIFICATION' });
+    }
+
+    // Generate token
+    const tokenJwt = jwt.sign(
+      { id: user._id, role: user.role },
+      env.JWT_SECRET,
+      { expiresIn: env.JWT_EXPIRE }
+    );
+
+    const userResponse = user.toObject();
+    delete userResponse.password;
+
+    return success(res, { user: userResponse, token: tokenJwt }, 'Account activated successfully');
+  } catch (error) {
+    logger.error(`Activate invite error: ${error.message}`);
+    return failure(res, 'Activation failed', 500);
+  }
+};
+
+// Logout (adds token to revoked tokens for server-side invalidation)
+export const logout = async (req, res) => {
+  try {
+    const token = req.headers.authorization && req.headers.authorization.split(' ')[1];
+    if (!token) return failure(res, 'No token provided', 400);
+
+    const jwtDecode = await import('jsonwebtoken');
+    const decoded = jwtDecode.decode(token, { complete: false }) || {};
+    const exp = decoded.exp ? new Date(decoded.exp * 1000) : new Date(Date.now() + 24 * 3600 * 1000);
+
+    const RevokedToken = (await import('../models/RevokedToken.js')).default;
+
+    await RevokedToken.create({ token, expiresAt: exp });
+
+    return success(res, null, 'Logged out successfully');
+  } catch (error) {
+    logger.error(`Logout error: ${error.message}`);
+    return failure(res, 'Logout failed', 500);
+  }
 };

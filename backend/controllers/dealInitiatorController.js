@@ -3,15 +3,21 @@ import { success, failure } from '../utils/response.js';
 
 export const claimDeal = async (req, res) => {
   try {
-    const deal = await VerificationRequest.findByIdAndUpdate(
-      req.params.verificationId,
-      { dealInitiator: req.user.id, status: 'CLAIMED' },
-      { new: true }
-    );
+    const verification = await VerificationRequest.findById(req.params.verificationId);
+    if (!verification) return failure(res, 'Verification not found', 404);
 
-    if (!deal) return failure(res, 'Verification not found', 404);
+    if (verification.claimedBy) return failure(res, 'Verification already claimed', 400);
 
-    return success(res, { verification: deal }, 'Claim successful');
+    const modelName = req.user.role === 'DEAL_INITIATOR' ? 'DealInitiator' : 'Agent';
+
+    verification.claimedBy = req.user.id;
+    verification.claimedByModel = modelName;
+    verification.claimedAt = new Date();
+    verification.requestStatus = 'claimed';
+
+    await verification.save();
+
+    return success(res, { verification }, 'Claim successful');
   } catch (error) {
     return failure(res, 'Claim failed', 500);
   }

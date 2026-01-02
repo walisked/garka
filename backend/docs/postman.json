@@ -1,0 +1,52 @@
+{
+  "info": {
+    "name": "Garka API",
+    "_postman_id": "garka-collection",
+    "description": "API collection for key flows including Monnify payments",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Monnify - Initiate Payment",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{ADMIN_TOKEN}}" }
+        ],
+        "body": { "mode": "raw", "raw": "{\n  \"verificationId\": \"<verificationId>\",\n  \"amount\": 10000\n}" },
+        "url": { "raw": "{{BASE_URL}}/api/payment/monnify/initiate", "host": ["{{BASE_URL}}"], "path": ["api","payment","monnify","initiate"] }
+      }
+    },
+    {
+      "name": "Monnify - Webhook Example",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "x-monnify-signature", "value": "{{MONNIFY_SIGNATURE}}" },
+          { "key": "x-event-id", "value": "evt_123" }
+        ],
+        "body": { "mode": "raw", "raw": "{\n  \"eventType\": \"TRANSACTION_SUCCESSFUL\",\n  \"data\": { \"paymentReference\": \"MON_TREF_123\", \"status\": \"SUCCESS\" },\n  \"eventId\": \"evt_123\"\n}" },
+        "url": { "raw": "{{BASE_URL}}/api/payment/monnify/webhook", "host": ["{{BASE_URL}}"], "path": ["api","payment","monnify","webhook"] }
+      }
+    },
+    {
+      "name": "Deal Initiator - Claim",
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Authorization", "value": "Bearer {{DI_TOKEN}}" } ],
+        "url": { "raw": "{{BASE_URL}}/api/deal-initiator/claim/{{VERIFICATION_ID}}", "host": ["{{BASE_URL}}"], "path": ["api","deal-initiator","claim","{{VERIFICATION_ID}}"] }
+      }
+    },
+    {
+      "name": "Admin - Approve Verification",
+      "request": {
+        "method": "PATCH",
+        "header": [ { "key": "Authorization", "value": "Bearer {{ADMIN_TOKEN}}" }, { "key": "Content-Type", "value": "application/json" } ],
+        "body": { "mode": "raw", "raw": "{ \"adminNote\": \"Approved\" }" },
+        "url": { "raw": "{{BASE_URL}}/api/verification/{{VERIFICATION_ID}}/approve", "host": ["{{BASE_URL}}"], "path": ["api","verification","{{VERIFICATION_ID}}","approve"] }
+      }
+    }
+  ]
+}

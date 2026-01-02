@@ -28,12 +28,17 @@ const limiter = rateLimit({
 });
 app.use('/api', limiter);
 
-// Body parsing
-app.use(express.json({ limit: '10mb' }));
+// Body parsing (capture raw body for webhook signature verification)
+app.use(express.json({ limit: '10mb', verify: (req, res, buf) => { req.rawBody = buf; } }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Data sanitization
-app.use(mongoSanitize());
+// Skip express-mongo-sanitize in test environment because it can fail with read-only req.query objects in some test runners
+if (env.NODE_ENV !== 'test') {
+  app.use(mongoSanitize());
+} else {
+  app.use((req, res, next) => next());
+}
 
 // Compression
 app.use(compression());
@@ -47,6 +52,17 @@ app.use('/uploads', express.static('uploads'));
 // API routes
 import apiRoutes from './routes/index.js';
 app.use('/api', apiRoutes);
+
+// Start reservation cleaner in non-test environments (expires unpaid/expired reservations)
+if (env.NODE_ENV !== 'test') {
+  import('./services/reservation.js').then(({ startReservationCleaner }) => {
+    // default interval: 1 minute (for dev). Increase in prod via env if desired.
+    const intervalMs = parseInt(process.env.RESERVATION_CLEANER_MS || '60000', 10);
+    startReservationCleaner(intervalMs);
+  }).catch(err => {
+    logger.warn(`Failed to start reservation cleaner: ${err.message}`);
+  });
+}
 
 // 404 handler
 app.use((req, res) => {

@@ -21,7 +21,8 @@ export const createProperty = async (req, res) => {
 
 export const listProperties = async (req, res) => {
   try {
-    const properties = await LandProperty.find({ status: 'AVAILABLE' }).populate('agent', 'user organizationName');
+    // Return all properties that are not sold; frontend will handle filtering
+    const properties = await LandProperty.find({ status: { $ne: 'sold' } }).populate('agentId', 'user organizationName');
     return success(res, { properties }, 'Properties retrieved');
   } catch (error) {
     return failure(res, 'Failed to list properties', 500);

@@ -40,8 +40,26 @@ const userSchema = new mongoose.Schema(
     isEmailVerified: {
       type: Boolean,
       default: false
-    }
-    ,
+    },
+
+    // Invitation / activation fields for admin-invited accounts
+    invited: {
+      type: Boolean,
+      default: false
+    },
+
+    invitedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+
+    activationToken: String,
+    activationExpires: Date,
+    isActivated: {
+      type: Boolean,
+      default: true
+    },
+
     lastLogin: Date,
     profile: {
       type: mongoose.Schema.Types.ObjectId,
